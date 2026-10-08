@@ -10,12 +10,20 @@ const activityLogRoutes = require('./routes/activityLogRoutes');
 const AppError = require('./utils/appError');
 const globalErrorHandler = require('./controllers/errorController');
 
-connectDB();
-
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// Ensure the database is connected before handling any request
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    next(new AppError('Database connection failed', 500));
+  }
+});
 
 app.get('/', (req, res) => {
   res.send('Saddle Prime Store Inventory API is running');
@@ -35,8 +43,12 @@ app.all('*', (req, res, next) => {
 // Central error handler — must be the last middleware registered
 app.use(globalErrorHandler);
 
-const PORT = process.env.PORT || 5000;
+// Only start a listener when run directly (local dev); Vercel imports the app instead
+if (require.main === module) {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+module.exports = app;
